@@ -1,7 +1,5 @@
 # Sistem Monitoring K3 & Disiplin Kerja — Backend
 
-> Capstone Project · Teknik Informatika · Laravel 11 + Sanctum + MySQL
-
 ---
 
 ## Akun Demo
