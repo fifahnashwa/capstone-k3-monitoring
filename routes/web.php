@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Models\ActivityLog;
+use App\Http\Controllers\ReportController;
 
 // ─── Protected pages (session auth) ──────────────────────────────────────────
 Route::middleware('auth')->group(function () {
@@ -15,6 +16,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/cameras',             fn() => view('cameras.index'))->name('cameras.index');
     Route::get('/shifts',              fn() => view('shifts.index'))->name('shifts.index');
     Route::get('/activity-logs',       fn() => view('activity-logs.index'))->name('activity-logs.index');
+    Route::get('/reports/pdf', [ReportController::class, 'exportPdf'])
+    ->name('reports.pdf')
+    ->middleware('role:hr,admin');
+
 });
 
 // ─── Auth routes ──────────────────────────────────────────────────────────────
