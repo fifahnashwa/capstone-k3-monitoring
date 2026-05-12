@@ -13,4 +13,3 @@ tests/
 !.env.example
 docker/Dockerfile
 docker/nginx.conf
-docker/entrypoint.sh

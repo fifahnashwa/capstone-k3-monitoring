@@ -102,7 +102,7 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-Tunggu ±1 menit (build pertama lebih lama), lalu buka **http://localhost:8080**
+Tunggu ±1 menit (build pertama lebih lama), lalu buka **http://localhost:8000**
 
 Entrypoint otomatis: migrate → seed (skip jika DB sudah ada data) → config cache.
 
@@ -110,7 +110,7 @@ Entrypoint otomatis: migrate → seed (skip jika DB sudah ada data) → config c
 
 | Service | Host port |
 |---|---|
-| App (Nginx) | `8080` |
+| App (Nginx) | `8000` |
 | MySQL | `3307` |
 
 ### Perintah berguna
@@ -190,7 +190,7 @@ Cek extension PHP yang aktif: `php -m | grep pdo`
 php artisan migrate:fresh --seed
 ```
 
-**Port 8080 sudah dipakai (Docker)**
+**Port 8000 sudah dipakai (Docker)**
 Ganti di `docker-compose.yml`: `"8090:80"`, lalu update `SANCTUM_STATEFUL_DOMAINS` di `.env`.
 
 **Notif Telegram tidak terkirim**

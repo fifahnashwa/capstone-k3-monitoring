@@ -5,10 +5,20 @@ echo "=== K3 Monitoring System — Docker Entrypoint ==="
 
 # ── 1. Wait for MySQL to be ready ────────────────────────────────────────────
 echo "[1/5] Waiting for MySQL..."
-until mysqladmin ping -h "$DB_HOST" -u "$DB_USERNAME" -p"$DB_PASSWORD" --silent 2>/dev/null; do
+echo "      DB_HOST=$DB_HOST, DB_USERNAME=$DB_USERNAME, DB_PORT=$DB_PORT"
+RETRY=0
+until MYSQL_PWD="$DB_PASSWORD" mysql -h "$DB_HOST" -u "$DB_USERNAME" --ssl=0 -e "SELECT 1" > /dev/null 2>&1; do
+    RETRY=$((RETRY + 1))
+    if [ $RETRY -eq 1 ]; then
+        echo "      First attempt failed, retrying..."
+    fi
+    if [ $RETRY -gt 30 ]; then
+        echo "      ERROR: MySQL did not respond after 60 seconds"
+        exit 1
+    fi
     sleep 2
 done
-echo "      MySQL is up."
+echo "      MySQL is up (after $RETRY retries)."
 
 # ── 2. Generate APP_KEY if not set ───────────────────────────────────────────
 echo "[2/5] Checking APP_KEY..."
@@ -42,7 +52,7 @@ echo "      Done."
 
 echo ""
 echo "================================================="
-echo "  App running at http://localhost:8080"
+echo "  App running at http://localhost:8000"
 echo ""
 echo "  Demo accounts (password: password123):"
 echo "    Admin   : admin@k3.com"
