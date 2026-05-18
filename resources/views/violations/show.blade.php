@@ -263,8 +263,9 @@ async function submitAction() {
 
     try {
         await api('PUT', `/api/violations/${violationId}/validate`, body);
+        const wasValid = pendingIsValid;
         closeActionModal();
-        toast(pendingIsValid ? 'Berhasil divalidasi.' : 'Berhasil ditolak.');
+        toast(wasValid ? 'Berhasil divalidasi.' : 'Berhasil ditolak.'); 
         loadDetail();
     } catch(e) {
         toast(e.message ?? 'Gagal', 'error');
