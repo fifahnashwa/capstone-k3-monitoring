@@ -160,22 +160,24 @@ async def stream(camera_id: int, x_service_key: str = Header(default="")):
     """MJPEG stream endpoint — bisa diakses langsung dari browser via <img>."""
 
     async def generate():
+        import asyncio
         boundary = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
         no_signal = _no_signal_frame()
         while True:
-            instance = await mgr.get_instance(camera_id)
-            if instance:
-                frame = instance.get_latest_frame()
-            else:
-                frame = None
-
-            if frame is None:
-                frame = no_signal
-
-            _, jpg = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
-            yield boundary + jpg.tobytes() + b"\r\n"
-
-            import asyncio
+            try:
+                instance = await mgr.get_instance(camera_id)
+                frame = instance.get_latest_frame() if instance else None
+                if frame is None:
+                    frame = no_signal
+                ok, jpg = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                if ok:
+                    yield boundary + jpg.tobytes() + b"\r\n"
+            except Exception:
+                try:
+                    _, jpg = cv2.imencode(".jpg", no_signal)
+                    yield boundary + jpg.tobytes() + b"\r\n"
+                except Exception:
+                    pass
             await asyncio.sleep(0.04)  # ~25 fps
 
     return StreamingResponse(

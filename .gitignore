@@ -22,3 +22,9 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Detection worker local venv
+detection_worker/.venv/
+detection_worker/.env
+detection_worker/__pycache__/
+detection_worker/*.pyc

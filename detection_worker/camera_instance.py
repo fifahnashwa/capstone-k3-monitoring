@@ -50,20 +50,49 @@ class RTSPStreamReader:
         log.info(f"Stream started: {self.url}")
         return True
 
+    # Resize target untuk hemat memory (720x1280 → 360x640 = 75% lebih kecil)
+    STREAM_W, STREAM_H = 640, 360
+
     def _update(self):
         while self._running:
             if self._cap is None:
                 break
-            grabbed, frame = self._cap.read()
-            if grabbed:
-                with self._lock:
-                    self._frame = frame
-            else:
-                time.sleep(0.02)
+            try:
+                grabbed, frame = self._cap.read()
+                if grabbed:
+                    try:
+                        frame = cv2.resize(frame, (self.STREAM_W, self.STREAM_H))
+                    except Exception:
+                        pass
+                    with self._lock:
+                        self._frame = frame
+                else:
+                    time.sleep(0.05)
+                    self._reconnect()
+            except Exception as e:
+                log.warning(f"Frame read error ({self.url}): {e}")
+                time.sleep(1)
+                self._reconnect()
+
+    def _reconnect(self):
+        try:
+            if self._cap:
+                self._cap.release()
+            time.sleep(2)
+            cap = cv2.VideoCapture(self.url, cv2.CAP_FFMPEG)
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            if cap.isOpened():
+                self._cap = cap
+                log.info(f"Reconnected: {self.url}")
+        except Exception as e:
+            log.warning(f"Reconnect failed: {e}")
 
     def read(self) -> Optional[np.ndarray]:
         with self._lock:
-            return self._frame.copy() if self._frame is not None else None
+            try:
+                return self._frame.copy() if self._frame is not None else None
+            except Exception:
+                return None
 
     def stop(self):
         self._running = False
@@ -89,6 +118,9 @@ class CameraInstance:
 
     def start(self) -> bool:
         rtsp_url = self._build_rtsp_url()
+        if not rtsp_url:
+            log.error(f"Camera {self.camera_id}: ip_address kosong, skip.")
+            return False
         self._stream = RTSPStreamReader(rtsp_url)
         if not self._stream.start():
             return False
@@ -123,7 +155,10 @@ class CameraInstance:
 
     def get_latest_frame(self) -> Optional[np.ndarray]:
         with self._frame_lock:
-            return self._latest_frame.copy() if self._latest_frame is not None else None
+            try:
+                return self._latest_frame.copy() if self._latest_frame is not None else None
+            except Exception:
+                return None
 
     def ptz_move(self, direction: str, speed: float = None, duration: float = None) -> dict:
         if not self._onvif:
@@ -172,26 +207,28 @@ class CameraInstance:
         health_tick = time.time()
 
         while self._running:
-            frame = self._stream.read()
-            if frame is None:
-                time.sleep(0.01)
-                continue
+            try:
+                frame = self._stream.read()
+                if frame is None:
+                    time.sleep(0.01)
+                    continue
 
-            annotated, violations = self._engine.process_frame(frame)
+                annotated, violations = self._engine.process_frame(frame)
 
-            with self._frame_lock:
-                self._latest_frame = annotated
+                with self._frame_lock:
+                    self._latest_frame = annotated
 
-            # Post violations ke Laravel
-            for v in violations:
-                loop.run_until_complete(self._report_violation(v))
+                for v in violations:
+                    loop.run_until_complete(self._report_violation(v))
 
-            # Health check setiap 60 detik
-            if time.time() - health_tick > 60:
-                health_tick = time.time()
-                loop.run_until_complete(
-                    post_health_check(self.camera_id, "online", {"rtsp_ok": True})
-                )
+                if time.time() - health_tick > 60:
+                    health_tick = time.time()
+                    loop.run_until_complete(
+                        post_health_check(self.camera_id, "online", {"rtsp_ok": True})
+                    )
+            except Exception as e:
+                log.error(f"CameraInstance {self.camera_id} _run_loop error: {e}")
+                time.sleep(1)
 
         loop.close()
 
@@ -212,13 +249,15 @@ class CameraInstance:
         await post_violation(payload)
 
     def _build_rtsp_url(self) -> str:
-        user = self.config.get("username", "")
-        pw   = self.config.get("password", "")
-        ip   = self.config.get("ip_address", "127.0.0.1")
+        user = self.config.get("username") or ""
+        pw   = self.config.get("password") or ""
+        ip   = self.config.get("ip_address") or ""
         port = self.config.get("port_rtsp", 554)
         path = self.config.get("rtsp_path", "/stream2")
         transport = self.config.get("rtsp_transport", "tcp")
         os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = f"rtsp_transport;{transport}"
+        if not ip:
+            return ""
         if user and pw:
             return f"rtsp://{user}:{pw}@{ip}:{port}{path}"
         return f"rtsp://{ip}:{port}{path}"

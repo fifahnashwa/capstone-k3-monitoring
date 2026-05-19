@@ -57,25 +57,8 @@ services:
     networks:
       - k3_net
 
-  # ─── Detection Worker (FastAPI + YOLO) ──────────────────────────────────────
-  detection_worker:
-    build:
-      context: ./detection_worker
-      dockerfile: Dockerfile
-    container_name: k3_detection_worker
-    restart: unless-stopped
-    environment:
-      SERVICE_KEY: ${SERVICE_KEY}
-      LARAVEL_URL: http://nginx:80
-      LARAVEL_TIMEOUT: "10"
-      STORAGE_PATH: /var/www/html/storage/app/public/violations
-    volumes:
-      - ./best.onnx:/app/best.onnx:ro
-      - storage_data:/var/www/html/storage/app
-    depends_on:
-      - nginx
-    networks:
-      - k3_net
+  # Detection Worker berjalan di luar Docker (lokal).
+  # Jalankan manual: cd detection_worker && python -m uvicorn main:app --port 8001
 
 volumes:
   mysql_data:
