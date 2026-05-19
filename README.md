@@ -201,3 +201,4 @@ tail -100 storage/logs/laravel.log | grep -i telegram
 # Docker
 docker compose exec app tail -100 storage/logs/laravel.log | grep -i telegram
 ```
+# capstone
