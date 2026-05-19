@@ -13,81 +13,90 @@ use App\Http\Controllers\ActivityLogController;
 use Illuminate\Support\Facades\Route;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PUBLIC — Tidak butuh auth apapun
+// PUBLIC
 // ─────────────────────────────────────────────────────────────────────────────
-
-// Login tersedia untuk semua role: admin, manager, hr
 Route::post('/login', [AuthController::class, 'login']);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TIF ONLY — Validasi via X-Service-Key header, bukan Bearer token
+// SERVICE KEY — TIF pipeline + Detection Worker
 // ─────────────────────────────────────────────────────────────────────────────
 Route::middleware('service.key')->group(function () {
     Route::post('/violations', [ViolationController::class, 'store']);
+
+    // Detection worker endpoints
+    Route::get('/cameras/active',             [CameraController::class, 'getActiveCameraIds']);
+    Route::get('/cameras/{camera}/config',    [CameraController::class, 'getCameraConfig']);
+    Route::post('/cameras/{camera}/health-check', [CameraController::class, 'healthCheck']);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AUTHENTICATED — Semua user yang login via Bearer token (Sanctum)
+// AUTHENTICATED — Session (Laravel Web Guard)
 // ─────────────────────────────────────────────────────────────────────────────
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth')->group(function () {
 
-    // Logout — semua role bisa logout
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // ── ADMIN ONLY ────────────────────────────────────────────────────────────
     Route::middleware('role:admin')->group(function () {
-        // Manajemen user: Admin bisa lihat, buat, update, hapus user lain.
-        // Admin tidak bisa hapus diri sendiri — dicek di controller.
-        Route::get('/users', [UserController::class, 'index']);
-        Route::post('/users', [UserController::class, 'store']);
-        Route::put('/users/{user}', [UserController::class, 'update']);
-        Route::delete('/users/{user}', [UserController::class, 'destroy']);
+        // Pengguna
+        Route::get('/users',            [UserController::class, 'index']);
+        Route::post('/users',           [UserController::class, 'store']);
+        Route::put('/users/{user}',     [UserController::class, 'update']);
+        Route::delete('/users/{user}',  [UserController::class, 'destroy']);
 
-        // Manajemen zona: CRUD zona.
-        // Zona tidak bisa dihapus kalau masih punya kamera aktif — dicek di controller.
-        Route::post('/zones', [ZoneController::class, 'store']);
-        Route::put('/zones/{zone}', [ZoneController::class, 'update']);
-        Route::delete('/zones/{zone}', [ZoneController::class, 'destroy']);
+        // Zona
+        Route::post('/zones',                          [ZoneController::class, 'store']);
+        Route::put('/zones/{zone}',                    [ZoneController::class, 'update']);
+        Route::delete('/zones/{zone}',                 [ZoneController::class, 'destroy']);
+        Route::post('/zones/{zone}/rules',             [ZoneController::class, 'storeRule']);
+        Route::delete('/zones/{zone}/rules/{rule}',    [ZoneController::class, 'destroyRule']);
 
-        // Manajemen aturan APD per zona: append-only (tidak ada PUT).
-        // Kalau aturan berubah: DELETE rule lama → POST rule baru.
-        Route::post('/zones/{zone}/rules', [ZoneController::class, 'storeRule']);
-        Route::delete('/zones/{zone}/rules/{rule}', [ZoneController::class, 'destroyRule']);
+        // Kamera — CRUD + konfigurasi
+        Route::post('/cameras',                        [CameraController::class, 'store']);
+        Route::put('/cameras/{camera}',                [CameraController::class, 'update']);
+        Route::delete('/cameras/{camera}',             [CameraController::class, 'destroy']);
+        Route::post('/cameras/{camera}/test-connection', [CameraController::class, 'testConnection']);
+        Route::post('/cameras/{camera}/toggle-status', [CameraController::class, 'toggleStatus']);
+        Route::post('/cameras/upload-model',           [CameraController::class, 'uploadModel']);
+        Route::post('/cameras/{camera}/ptz/save-preset', [CameraController::class, 'savePreset']);
 
-        // Manajemen kamera: CRUD kamera.
-        Route::post('/cameras', [CameraController::class, 'store']);
-        Route::put('/cameras/{camera}', [CameraController::class, 'update']);
-        Route::delete('/cameras/{camera}', [CameraController::class, 'destroy']);
-
-        // Manajemen shift: CRUD shift.
-        // Jam shift disimpan di DB supaya Admin bisa update tanpa deploy ulang.
-        Route::post('/shifts', [ShiftController::class, 'store']);
-        Route::put('/shifts/{shift}', [ShiftController::class, 'update']);
+        // Shift
+        Route::post('/shifts',          [ShiftController::class, 'store']);
+        Route::put('/shifts/{shift}',   [ShiftController::class, 'update']);
         Route::delete('/shifts/{shift}', [ShiftController::class, 'destroy']);
 
-        // Activity logs: hanya Admin yang bisa lihat seluruh audit trail sistem.
-        Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+        // Activity logs
+        Route::get('/activity-logs',    [ActivityLogController::class, 'index']);
     });
 
-    // ── ADMIN + MANAGER + HR (READ) ───────────────────────────────────────────
+    // ── ADMIN + MANAGER + HR ──────────────────────────────────────────────────
     Route::middleware('role:admin,manager,hr')->group(function () {
-        // GET konfigurasi — read-only untuk Manager dan HR
-        Route::get('/zones', [ZoneController::class, 'index']);
-        Route::get('/cameras', [CameraController::class, 'index']);
-        Route::get('/shifts', [ShiftController::class, 'index']);
+        // Config read
+        Route::get('/zones',                 [ZoneController::class, 'index']);
+        Route::get('/cameras',               [CameraController::class, 'index']);
+        Route::get('/cameras/{camera}',      [CameraController::class, 'show']);
+        Route::get('/shifts',                [ShiftController::class, 'index']);
 
-        // Violations — semua role bisa lihat list dan detail,
-        // tapi hanya Manager yang bisa validasi (endpoint validate di bawah)
-        Route::get('/violations', [ViolationController::class, 'index']);
+        // Stream & screenshot (semua role bisa lihat monitoring)
+        Route::get('/cameras/{camera}/stream',     [CameraController::class, 'streamProxy']);
+        Route::post('/cameras/{camera}/screenshot', [CameraController::class, 'screenshot']);
+
+        // PTZ (manager & admin) — diatur di RoleMiddleware tambahan di controller jika perlu
+        Route::post('/cameras/{camera}/ptz',              [CameraController::class, 'ptzControl']);
+        Route::post('/cameras/{camera}/ptz/preset/{presetIndex}', [CameraController::class, 'gotoPreset'])
+            ->where('presetIndex', '[0-9]+');
+
+        // Violations
+        Route::get('/violations',           [ViolationController::class, 'index']);
         Route::get('/violations/{violation}', [ViolationController::class, 'show']);
 
-        // Dashboard KPI — agregasi siap pakai untuk SI,
-        // tidak perlu loop pagination violations untuk hitung summary
-        Route::get('/dashboard/summary', [DashboardController::class, 'summary']);
+        // Dashboard
+        Route::get('/dashboard/summary',     [DashboardController::class, 'summary']);
+        Route::get('/dashboard/stats',       [CameraController::class, 'dashboardStats']);
+        Route::get('/dashboard/activity-log', [CameraController::class, 'dashboardActivityLog']);
 
-        // Notifikasi — setiap user hanya bisa lihat notifikasi milik sendiri,
-        // filtering by auth()->id() dilakukan di controller
-        Route::get('/notifications', [ViolationNotificationController::class, 'index']);
+        // Notifikasi
+        Route::get('/notifications',         [ViolationNotificationController::class, 'index']);
     });
 
     // ── MANAGER ONLY ──────────────────────────────────────────────────────────

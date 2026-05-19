@@ -57,6 +57,26 @@ services:
     networks:
       - k3_net
 
+  # ─── Detection Worker (FastAPI + YOLO) ──────────────────────────────────────
+  detection_worker:
+    build:
+      context: ./detection_worker
+      dockerfile: Dockerfile
+    container_name: k3_detection_worker
+    restart: unless-stopped
+    environment:
+      SERVICE_KEY: ${SERVICE_KEY}
+      LARAVEL_URL: http://nginx:80
+      LARAVEL_TIMEOUT: "10"
+      STORAGE_PATH: /var/www/html/storage/app/public/violations
+    volumes:
+      - ./best.onnx:/app/best.onnx:ro
+      - storage_data:/var/www/html/storage/app
+    depends_on:
+      - nginx
+    networks:
+      - k3_net
+
 volumes:
   mysql_data:
   vendor_cache:

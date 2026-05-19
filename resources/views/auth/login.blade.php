@@ -154,7 +154,7 @@ async function doLogin() {
             return;
         }
 
-        // Login berhasil → session sudah dibuat → redirect ke dashboard
+        // Login berhasil → redirect ke dashboard
         window.location.href = '/dashboard';
 
     } catch (err) {

@@ -43,10 +43,15 @@ return [
     ],
 
     'telegram' => [
-        'token'      => env('TELEGRAM_BOT_TOKEN'),
+        'token'           => env('TELEGRAM_BOT_TOKEN'),
         'manager_chat_id' => env('TELEGRAM_MANAGER_CHAT_ID'),
         'hr_chat_id'      => env('TELEGRAM_HR_CHAT_ID'),
     ],
 
+    'detection_worker' => [
+        'url'     => env('DETECTION_WORKER_URL', 'http://detection_worker:8000'),
+        'key'     => env('SERVICE_KEY', ''),
+        'timeout' => env('DETECTION_WORKER_TIMEOUT', 5),
+    ],
 
 ];

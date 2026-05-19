@@ -3,6 +3,12 @@ set -e
 
 echo "=== K3 Monitoring System — Docker Entrypoint ==="
 
+# ── 0. Fix storage permissions (volume mount overrides Dockerfile chown) ──────
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
+chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
+mkdir -p /var/www/html/storage/logs /var/www/html/storage/framework/{cache,sessions,views}
+chown -R www-data:www-data /var/www/html/storage
+
 # ── 1. Wait for MySQL to be ready ────────────────────────────────────────────
 echo "[1/5] Waiting for MySQL..."
 echo "      DB_HOST=$DB_HOST, DB_USERNAME=$DB_USERNAME, DB_PORT=$DB_PORT"

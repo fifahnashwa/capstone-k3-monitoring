@@ -8,15 +8,29 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ServiceKeyMiddleware
 {
+    /**
+     * Validasi X-Service-Key header.
+     * Menerima TIF_SERVICE_KEY (integrasi TIF) atau SERVICE_KEY (detection worker).
+     */
     public function handle(Request $request, Closure $next): Response
     {
-        $providedKey = $request->header('X-Service-Key');
-        $expectedKey = config('services.tif.service_key');
+        $provided = $request->header('X-Service-Key');
 
-        if (!$providedKey || !hash_equals($expectedKey, $providedKey)) {
-            return response()->json(['message' => 'Unauthorized. X-Service-Key tidak valid.'], 401);
+        if (!$provided) {
+            return response()->json(['message' => 'Unauthorized. X-Service-Key diperlukan.'], 401);
         }
 
-        return $next($request);
+        $validKeys = array_filter([
+            config('services.tif.service_key'),
+            config('services.detection_worker.key'),
+        ]);
+
+        foreach ($validKeys as $key) {
+            if (hash_equals($key, $provided)) {
+                return $next($request);
+            }
+        }
+
+        return response()->json(['message' => 'Unauthorized. X-Service-Key tidak valid.'], 401);
     }
 }
