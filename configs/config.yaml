@@ -1,0 +1,43 @@
+detection:
+  model_path: "best.pt"
+  fallback_model: "yolov8n.pt"
+  confidence_threshold: 0.40
+  iou_threshold: 0.45
+  input_size: 640
+  frame_skip: 2
+
+# Kelas model 7-class: boots(0) helmet(1) no_boots(2) no_helmet(3) no_vest(4) person(5) vest(6)
+class_mapping:
+  person_id: 5
+  helmet_ids: [1]
+  vest_ids: [6]
+  boots_ids: [0]
+  no_helmet_ids: [3]
+  no_vest_ids: [4]
+  no_boots_ids: [2]
+
+class_colors:
+  boots:     [0, 200, 100]
+  helmet:    [0, 220, 0]
+  no_boots:  [255, 50, 50]
+  no_helmet: [255, 30, 30]
+  no_vest:   [255, 120, 30]
+  person:    [0, 100, 255]
+  vest:      [0, 180, 0]
+
+display:
+  show_window: true
+  window_width: 1280
+  window_height: 720
+  show_fps: true
+  show_zone_name: true
+  show_shift_status: true
+  show_timestamp: true
+
+violations:
+  auto_snapshot: true
+  csv_log_path: "logs/violations.csv"
+
+storage:
+  snapshot_dir: "snapshots/violations"
+  jpeg_quality: 85
