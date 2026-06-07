@@ -1,0 +1,21 @@
+zones:
+  - id: laptop_test
+    display_name: "Laptop Test"
+    camera_id: 0
+    required_ppe: [helmet, vest, boots]
+    major_ppe: [helmet, boots]
+    minor_ppe: [vest]
+
+  - id: forklift_area
+    display_name: "Forklift"
+    camera_id: 1
+    required_ppe: [helmet, vest, boots]
+    major_ppe: [helmet, boots]
+    minor_ppe: [vest]
+
+  - id: empty_box_area
+    display_name: "Empty Box"
+    camera_id: 2
+    required_ppe: [helmet, vest, boots]
+    major_ppe: [helmet, boots]
+    minor_ppe: [vest]

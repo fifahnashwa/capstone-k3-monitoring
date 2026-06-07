@@ -1,0 +1,36 @@
+detection:
+  model_path: "../models/best.pt"
+  fallback_model: "yolov8n.pt"
+  confidence_threshold: 0.40
+  iou_threshold: 0.45
+  input_size: 640
+  frame_skip: 2
+
+class_mapping:
+  person_id: 6
+  helmet_ids: [0]
+  vest_ids: [2]
+  boots_ids: [3]
+
+class_colors:
+  person:  [0, 100, 255]
+  helmet:  [0, 200, 0]
+  vest:    [0, 180, 0]
+  boots:   [0, 160, 0]
+
+display:
+  show_window: true
+  window_width: 1280
+  window_height: 720
+  show_fps: true
+  show_zone_name: true
+  show_shift_status: true
+  show_timestamp: true
+
+violations:
+  auto_snapshot: true
+  csv_log_path: "logs/violations.csv"
+
+storage:
+  snapshot_dir: "snapshots/violations"
+  jpeg_quality: 85
