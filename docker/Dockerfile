@@ -12,7 +12,7 @@ RUN docker-php-ext-install \
 
 # PHP upload limits untuk face training (50 foto × 10MB)
 RUN { \
-    echo 'upload_max_filesize = 500M'; \
+    echo 'upload_max_filesize = 10M'; \
     echo 'post_max_size = 512M'; \
     echo 'max_file_uploads = 50'; \
     echo 'memory_limit = 512M'; \

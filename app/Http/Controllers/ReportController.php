@@ -95,8 +95,14 @@ class ReportController extends Controller
         $byLevel = $violations->whereNotNull('level')
             ->groupBy('level')->map->count();
 
-        $byLabel = $violations->whereNotNull('apd_label')
-            ->groupBy('apd_label')->map->count();
+        // Hitung per-label dari apd_labels (bukan hanya primary apd_label)
+        $byLabel = ['no_helmet' => 0, 'no_vest' => 0, 'no_boots' => 0];
+        foreach ($violations as $v) {
+            $labels = $v->apd_labels ?? ($v->apd_label ? [$v->apd_label] : []);
+            foreach ($labels as $l) {
+                if (array_key_exists($l, $byLabel)) $byLabel[$l]++;
+            }
+        }
 
         $byZone = $violations->groupBy(fn($v) => $v->camera?->zone?->name ?? 'Unknown')
             ->map(fn($group, $zoneName) => [
@@ -119,7 +125,7 @@ class ReportController extends Controller
             'zona'            => $v->camera?->zone?->name ?? 'Unknown',
             'kamera'          => $v->camera?->dvr_channel ?? '-',
             'jenis'           => $v->violation_type === 'apd' ? 'APD' : 'Disiplin',
-            'label'           => $v->apd_label ?? 'Orang di luar shift',
+            'label'           => implode(', ', $v->apd_labels ?? ($v->apd_label ? [$v->apd_label] : ['Orang di luar shift'])),
             'level'           => $v->level ? strtoupper($v->level) : '-',
             'nama_pelanggar'  => $v->person_name ?? 'Tidak diidentifikasi',
             'status'          => $v->status,
@@ -183,18 +189,28 @@ class ReportController extends Controller
         // ── Summary ───────────────────────────────────────────────────────────────
         $byType  = $violations->groupBy('violation_type')->map->count();
         $byLevel = $violations->whereNotNull('level')->groupBy('level')->map->count();
-        $byLabel = $violations->whereNotNull('apd_label')->groupBy('apd_label')->map->count();
         $byZone  = $violations->groupBy(fn($v) => $v->camera?->zone?->name ?? 'Unknown')->map->count();
         $byShift = $violations->groupBy(fn($v) => $v->shift?->name ?? 'Di luar shift')->map->count();
+
+        // Hitung per-label dari apd_labels
+        $byLabelCount = ['no_helmet' => 0, 'no_vest' => 0, 'no_boots' => 0];
+        foreach ($violations as $v) {
+            $labels = $v->apd_labels ?? ($v->apd_label ? [$v->apd_label] : []);
+            foreach ($labels as $l) {
+                if (array_key_exists($l, $byLabelCount)) $byLabelCount[$l]++;
+            }
+        }
+
+        $labelMap = ['no_helmet' => 'Tidak Pakai Helm', 'no_vest' => 'Tidak Pakai Rompi', 'no_boots' => 'Tidak Pakai Boots'];
 
         $summary = [
             'total'     => $violations->count(),
             'by_type'   => ['APD' => $byType['apd'] ?? 0, 'Disiplin' => $byType['discipline'] ?? 0],
             'by_level'  => ['Major' => $byLevel['major'] ?? 0, 'Minor' => $byLevel['minor'] ?? 0],
             'by_label'  => [
-                'Tidak Pakai Helm'   => $byLabel['no_helmet'] ?? 0,
-                'Tidak Pakai Rompi'  => $byLabel['no_vest']   ?? 0,
-                'Tidak Pakai Boots'  => $byLabel['no_boots']  ?? 0,
+                'Tidak Pakai Helm'   => $byLabelCount['no_helmet'],
+                'Tidak Pakai Rompi'  => $byLabelCount['no_vest'],
+                'Tidak Pakai Boots'  => $byLabelCount['no_boots'],
                 'Di Luar Shift'      => $violations->where('violation_type', 'discipline')->count(),
             ],
             'by_zone'   => $byZone->toArray(),
@@ -210,12 +226,10 @@ class ReportController extends Controller
             'kamera'       => $v->camera?->dvr_channel ?? '-',
             'shift'        => $v->shift?->name ?? 'Di luar shift',
             'jenis'        => $v->violation_type === 'apd' ? 'APD' : 'Disiplin',
-            'label'        => match ($v->apd_label) {
-                'no_helmet' => 'Tidak Pakai Helm',
-                'no_vest'   => 'Tidak Pakai Rompi',
-                'no_boots'  => 'Tidak Pakai Boots',
-                default     => 'Orang di luar shift',
-            },
+            'label'        => implode(', ', array_map(
+                fn($l) => $labelMap[$l] ?? ucfirst(str_replace('_', ' ', $l)),
+                $v->apd_labels ?? ($v->apd_label ? [$v->apd_label] : ['Orang di luar shift'])
+            )),
             'level'        => $v->level ? strtoupper($v->level) : '-',
             'nama'         => $v->person_name ?? 'Tidak diidentifikasi',
             'validator'    => $v->validator?->name ?? '-',

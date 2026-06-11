@@ -26,13 +26,28 @@ class ViolationController extends Controller
                 'integer',
                 'exists:cameras,id,deleted_at,NULL,is_active,1',
             ],
-            'timestamp'  => 'required|date_format:Y-m-d\TH:i:s',
-            'label'      => ['required', Rule::in(['no_helmet', 'no_vest', 'no_boots', 'person'])],
-            'confidence' => 'required|numeric|min:0|max:1',
+            'timestamp'   => 'required|date_format:Y-m-d\TH:i:s',
+            'label'       => ['nullable', Rule::in(['no_helmet', 'no_vest', 'no_boots', 'person'])],
+            'labels'      => ['nullable', 'array'],
+            'labels.*'    => [Rule::in(['no_helmet', 'no_vest', 'no_boots'])],
+            'confidence'  => 'required|numeric|min:0|max:1',
             'image_path'  => 'nullable|string|max:500',
             'image_data'  => 'nullable|string',
             'person_name' => 'nullable|string|max:255',
         ]);
+
+        // Normalisasi: `labels` (array baru) atau `label` (lama) → selalu pakai array
+        if (!empty($validated['labels'])) {
+            $allLabels   = $validated['labels'];
+            $primaryLabel = collect($allLabels)
+                ->sortBy(fn($l) => Violation::APD_LEVELS[$l] === 'major' ? 0 : 1)
+                ->first();
+        } elseif (!empty($validated['label'])) {
+            $allLabels    = [$validated['label']];
+            $primaryLabel = $validated['label'];
+        } else {
+            return response()->json(['message' => 'label atau labels wajib diisi.'], 422);
+        }
 
         // Decode base64 screenshot dan simpan ke storage jika dikirim oleh worker
         $imagePath = $validated['image_path'] ?? '';
@@ -49,10 +64,10 @@ class ViolationController extends Controller
             }
         }
 
-        if ($validated['confidence'] < 0.15) {
+        if ($validated['confidence'] < 0.4) {
             return response()->json([
                 'message' => 'Event diabaikan.',
-                'reason'  => 'Confidence di bawah threshold 0.15.',
+                'reason'  => 'Confidence di bawah threshold 0.4.',
             ]);
         }
 
@@ -83,7 +98,7 @@ class ViolationController extends Controller
          * CASE: PERSON (discipline)
          * =========================
          */
-        if ($validated['label'] === 'person') {
+        if ($primaryLabel === 'person') {
 
             if (!$isOutsideShift) {
                 return response()->json([
@@ -143,17 +158,25 @@ class ViolationController extends Controller
          */
         $zoneRules = $camera->zone?->apdRules?->pluck('apd_label')->toArray() ?? [];
 
-        if (!empty($zoneRules) && !in_array($validated['label'], $zoneRules)) {
-            return response()->json([
-                'message' => 'Event diabaikan.',
-                'reason'  => 'Label tidak termasuk aturan APD zona kamera ini.',
-            ]);
+        // Filter label yang berlaku sesuai zona rules (jika zona punya aturan)
+        if (!empty($zoneRules)) {
+            $allLabels = array_values(array_filter($allLabels, fn($l) => in_array($l, $zoneRules)));
+            if (empty($allLabels)) {
+                return response()->json([
+                    'message' => 'Event diabaikan.',
+                    'reason'  => 'Tidak ada label yang termasuk aturan APD zona kamera ini.',
+                ]);
+            }
+            // Recalculate primary label setelah filter
+            $primaryLabel = collect($allLabels)
+                ->sortBy(fn($l) => (Violation::APD_LEVELS[$l] ?? 'minor') === 'major' ? 0 : 1)
+                ->first();
         }
 
         $existing = Violation::where('camera_id', $camera->id)
             ->where('detected_at', $detectedAt)
             ->where('violation_type', 'apd')
-            ->where('apd_label', $validated['label'])
+            ->where('apd_label', $primaryLabel)
             ->first();
 
         if ($existing) {
@@ -166,13 +189,14 @@ class ViolationController extends Controller
             ]);
         }
 
-        $level = Violation::APD_LEVELS[$validated['label']];
+        $level = Violation::APD_LEVELS[$primaryLabel] ?? 'minor';
 
         $violation = Violation::create([
             'camera_id'        => $camera->id,
             'shift_id'         => $activeShift?->id,
             'violation_type'   => 'apd',
-            'apd_label'        => $validated['label'],
+            'apd_label'        => $primaryLabel,
+            'apd_labels'       => $allLabels,
             'level'            => $level,
             'confidence'       => $validated['confidence'],
             'image_path'       => $imagePath,
@@ -419,6 +443,7 @@ class ViolationController extends Controller
             ] : null,
             'violation_type'   => $violation->violation_type,
             'apd_label'        => $violation->apd_label,
+            'apd_labels'       => $violation->apd_labels ?? ($violation->apd_label ? [$violation->apd_label] : []),
             'level'            => $violation->level,
             'confidence'       => $violation->confidence,
             'image_path'       => $violation->image_path,
@@ -455,7 +480,7 @@ class ViolationController extends Controller
         }
 
         $zoneN    = $camera->zone?->name ?? 'Unknown';
-        $label    = $violation->apd_label ?? 'Orang di luar shift';
+        $label    = $this->violationLabel($violation);
         $type     = $violation->violation_type === 'apd' ? 'APD' : 'Disiplin';
         $level    = $violation->level ? strtoupper($violation->level) : '-';
         $time     = $violation->detected_at->format('d/m/Y H:i:s');
@@ -544,7 +569,7 @@ class ViolationController extends Controller
             'sent_at'      => null,
         ]);
 
-        $label    = $violation->apd_label ?? 'Orang di luar shift';
+        $label    = $this->violationLabel($violation);
         $type     = $violation->violation_type === 'apd' ? 'APD' : 'Disiplin';
         $level    = $violation->level ? strtoupper($violation->level) : '-';
         $person   = $violation->person_name ?? 'Tidak diidentifikasi';
@@ -596,5 +621,20 @@ class ViolationController extends Controller
                 ? ['status' => 'sent', 'sent_at' => now()]
                 : ['status' => 'failed']
         );
+    }
+
+    private function violationLabel(Violation $violation): string
+    {
+        if ($violation->violation_type === 'discipline') {
+            return 'Aktivitas di Luar Shift';
+        }
+        $map = [
+            'no_helmet' => 'Tidak Pakai Helm',
+            'no_vest'   => 'Tidak Pakai Rompi',
+            'no_boots'  => 'Tidak Pakai Sepatu Safety',
+        ];
+        $labels = $violation->apd_labels ?? ($violation->apd_label ? [$violation->apd_label] : []);
+        if (empty($labels)) return 'Pelanggaran APD';
+        return implode(', ', array_map(fn($l) => $map[$l] ?? ucfirst(str_replace('_', ' ', $l)), $labels));
     }
 }

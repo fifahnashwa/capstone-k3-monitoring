@@ -213,7 +213,7 @@ async def stream(camera_id: int, x_service_key: str = Header(default="")):
                     yield boundary + jpg.tobytes() + b"\r\n"
                 except Exception:
                     pass
-            await asyncio.sleep(0.04)  # ~25 fps
+            await asyncio.sleep(0.02)  # ~50 fps
 
     return StreamingResponse(
         generate(),

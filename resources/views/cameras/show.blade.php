@@ -162,7 +162,7 @@ function renderCamera(d) {
     document.getElementById('d-user').textContent     = d.username ?? '—';
     document.getElementById('d-rtsp').textContent     = (d.rtsp_path ?? '/stream2') + ` [${(d.rtsp_transport ?? 'tcp').toUpperCase()}]`;
     document.getElementById('d-model').textContent    = d.ai_model_path ?? 'Tidak dikonfigurasi';
-    document.getElementById('d-conf').textContent     = `${d.confidence_threshold ?? 0.40} / setiap ${d.process_every_n_frame ?? 2} frame`;
+    document.getElementById('d-conf').textContent     = `${d.confidence_threshold ?? 0.40} / setiap ${d.process_every_n_frame ?? 1} frame`;
     document.getElementById('d-ptz').textContent      = d.ptz_enabled ? `✓ Aktif (speed: ${d.ptz_speed})` : 'Tidak aktif';
     document.getElementById('d-ss').textContent       = d.auto_screenshot ? `✓ Aktif (cooldown: ${d.screenshot_cooldown}s)` : 'Nonaktif';
 

@@ -148,8 +148,9 @@ function renderTable(data) {
 }
 
 function labelCell(v) {
-    if (v.apd_label) {
-        return `<span class="inline-block px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">${v.apd_label}</span>`;
+    const labels = v.apd_labels?.length ? v.apd_labels : (v.apd_label ? [v.apd_label] : []);
+    if (labels.length) {
+        return labels.map(l => `<span class="inline-block px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">${l}</span>`).join(' ');
     }
     if (v.violation_type === 'discipline') {
         return '<span class="text-xs text-gray-400">—</span>';

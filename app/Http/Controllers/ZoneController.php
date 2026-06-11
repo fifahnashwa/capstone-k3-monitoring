@@ -145,40 +145,37 @@ class ZoneController extends Controller
             'apd_label' => [
                 'required',
                 Rule::in(['no_helmet', 'no_vest', 'no_boots']),
+                Rule::unique('zone_apd_rules')->where(
+                    fn($query) =>
+                    $query->where('zone_id', $zone->id)
+                ),
             ],
         ]);
 
-        [$rule, $created] = [
-            ZoneApdRule::firstOrCreate([
-                'zone_id'   => $zone->id,
-                'apd_label' => $validated['apd_label'],
-            ]),
-            false,
-        ];
-
-        $created = $rule->wasRecentlyCreated;
+        $rule = ZoneApdRule::create([
+            'zone_id'   => $zone->id,
+            'apd_label' => $validated['apd_label'],
+        ]);
 
         $level = Violation::APD_LEVELS[$validated['apd_label']];
 
-        if ($created) {
-            ActivityLog::create([
-                'user_id'     => $request->user()->id,
-                'action'      => 'create_zone_rule',
-                'target_type' => 'zone_apd_rules',
-                'target_id'   => $rule->id,
-                'description' => "Admin menambah aturan APD '{$validated['apd_label']}' ke zona {$zone->name}.",
-            ]);
-        }
+        ActivityLog::create([
+            'user_id'     => $request->user()->id,
+            'action'      => 'create_zone_rule',
+            'target_type' => 'zone_apd_rules',
+            'target_id'   => $rule->id,
+            'description' => "Admin menambah aturan APD '{$validated['apd_label']}' ke zona {$zone->name}.",
+        ]);
 
         return response()->json([
-            'message' => $created ? 'Aturan APD berhasil ditambahkan.' : 'Aturan APD sudah ada di zona ini.',
+            'message' => 'Aturan APD berhasil ditambahkan.',
             'data'    => [
                 'id'        => $rule->id,
                 'zone_id'   => $zone->id,
                 'apd_label' => $rule->apd_label,
                 'level'     => $level,
             ],
-        ], $created ? 201 : 200);
+        ], 201);
     }
 
     /**

@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('ai_model_path')->nullable()->after('connection_timeout');
             $table->integer('detection_size')->default(640)->after('ai_model_path');
             $table->decimal('confidence_threshold', 3, 2)->default(0.40)->after('detection_size');
-            $table->integer('process_every_n_frame')->default(2)->after('confidence_threshold');
+            $table->integer('process_every_n_frame')->default(1)->after('confidence_threshold');
             $table->json('class_mapping')->nullable()->after('process_every_n_frame');
             $table->boolean('ptz_enabled')->default(false)->after('class_mapping');
             $table->decimal('ptz_speed', 2, 1)->default(0.6)->after('ptz_enabled');

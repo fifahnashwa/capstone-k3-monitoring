@@ -13,6 +13,7 @@ class Violation extends Model
         'shift_id',
         'violation_type',
         'apd_label',
+        'apd_labels',
         'level',
         'confidence',
         'image_path',
@@ -30,6 +31,7 @@ class Violation extends Model
         'confidence'       => 'float',
         'validated_at'     => 'datetime',
         'detected_at'      => 'datetime',
+        'apd_labels'       => 'array',
     ];
 
     const APD_LEVELS = [

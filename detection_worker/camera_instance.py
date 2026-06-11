@@ -1,9 +1,10 @@
-"""multi thread stream + engine deteksi + ONVIF."""
+"""Representasi satu kamera aktif: thread stream + engine deteksi + ONVIF."""
 
 import asyncio
 import base64
 import logging
 import os
+import queue as _qmod
 import threading
 import time
 from datetime import datetime
@@ -123,6 +124,7 @@ class CameraInstance:
         self._name_lost:    dict = {}  # emp_name → consecutive frames not tracked
         self._face_thread_running = False
         self._face_lock           = threading.Lock()
+        self._detect_queue: _qmod.Queue = _qmod.Queue(maxsize=1)
 
     def start(self) -> bool:
         rtsp_url = self._build_rtsp_url()
@@ -148,6 +150,7 @@ class CameraInstance:
         self._running = True
         self._thread  = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
+        # _detect_loop tidak diperlukan — engine sudah punya background YOLO thread sendiri
         # Face recognition berjalan di thread terpisah agar tidak blokir detection
         self._face_thread_running = True
         threading.Thread(target=self._face_loop, daemon=True).start()
@@ -214,6 +217,7 @@ class CameraInstance:
     # ── Private ─────────────────────────────────────────────────────────────
 
     def _run_loop(self):
+        """Display loop: tiap frame → process_frame() → MOSSE track + annotate + violations."""
         health_tick = time.time()
 
         while self._running:
@@ -223,14 +227,14 @@ class CameraInstance:
                     time.sleep(0.01)
                     continue
 
+                # process_frame: kirim ke background YOLO, update MOSSE, gambar box
                 annotated, violations = self._engine.process_frame(frame)
 
                 with self._frame_lock:
                     self._latest_frame = annotated
 
-                # Kirim violation di background thread agar tidak memblokir detection loop
                 if violations:
-                    snapshot = annotated.copy()
+                    snapshot = frame.copy()
                     with self._face_lock:
                         ident_copy = list(self._locked_names.items())
                     for v in violations:
@@ -240,6 +244,8 @@ class CameraInstance:
                             ),
                             daemon=True,
                         ).start()
+
+                time.sleep(0.01)  # cap ~100fps, frame selalu fresh untuk YOLO
 
                 if time.time() - health_tick > 60:
                     health_tick = time.time()
@@ -254,24 +260,47 @@ class CameraInstance:
                 log.error(f"CameraInstance {self.camera_id} _run_loop error: {e}")
                 time.sleep(1)
 
+    def _detect_loop(self):
+        """YOLO detection loop: jalan di background thread terpisah."""
+        while self._running:
+            try:
+                frame = self._detect_queue.get(timeout=1.0)
+            except _qmod.Empty:
+                continue
+
+            if self._engine._model is None and self._engine._apd_sess is None:
+                continue
+
+            try:
+                workers, violations = self._engine._run_detection(frame)
+                self._engine._detected_workers = workers
+
+                if violations:
+                    snapshot = frame.copy()
+                    with self._face_lock:
+                        ident_copy = list(self._locked_names.items())
+                    for v in violations:
+                        threading.Thread(
+                            target=lambda v=v, s=snapshot, ident=ident_copy: asyncio.run(
+                                self._report_violation(v, ident, s)
+                            ),
+                            daemon=True,
+                        ).start()
+            except Exception as e:
+                log.error(f"CameraInstance {self.camera_id} _detect_loop error: {e}")
+
     def _face_loop(self):
         """Thread terpisah untuk face recognition — tidak memblokir detection loop."""
         interval = float(self.config.get("face_recognition_interval", 0.3))
         while self._face_thread_running and self._running:
             try:
+                if not face_recognizer.registry.has_models:
+                    # Tidak ada face model — sleep lebih lama, tidak perlu processing
+                    time.sleep(2.0)
+                    continue
                 frame = self._stream.read() if self._stream else None
                 if frame is not None:
-                    if face_recognizer.registry.has_models:
-                        self._identify_and_label(frame, None)
-                    else:
-                        # Tidak ada model — pastikan nama direset jika worker keluar
-                        workers = list(self._engine._detected_workers)
-                        with self._face_lock:
-                            active = set(range(len(workers)))
-                            for idx in list(self._locked_names.keys()):
-                                if idx not in active:
-                                    del self._locked_names[idx]
-                            self._engine._worker_names = dict(self._locked_names)
+                    self._identify_and_label(frame, None)
             except Exception as e:
                 log.debug(f"Face loop error: {e}")
             time.sleep(interval)
@@ -303,7 +332,8 @@ class CameraInstance:
 
     def _identify_and_label(self, frame: np.ndarray, _annotated) -> list:
         """Face recognition + box tracking — nama terkunci mengikuti orang yang bergerak."""
-        workers = list(self._engine._detected_workers)
+        # Saat skip_frame=1 MOSSE tidak aktif → pakai detected_workers sebagai fallback
+        workers = list(self._engine._mosse_workers) or list(self._engine._detected_workers)
 
         # ── 1. Face recognition: kunci nama baru, override box tracking ─────────
         if face_recognizer.registry.has_models:
@@ -419,9 +449,14 @@ class CameraInstance:
         if employee_id:
             base["person_name"] = employee_id  # locked_name berisi nama karyawan
 
-        # Kirim satu violation per APD yang hilang agar zona rules bisa match
-        for apd in v["missing_apd"]:
-            await post_violation({**base, "label": f"no_{apd}"})
+        if v.get("violation_type") == "person":
+            # Discipline violation — Laravel yang akan cek apakah di luar shift
+            await post_violation({**base, "label": "person"})
+        else:
+            # APD violation — kirim semua label yang hilang sekaligus
+            labels = [f"no_{apd}" for apd in v["missing_apd"]]
+            if labels:
+                await post_violation({**base, "labels": labels})
 
     def _build_rtsp_url(self) -> str:
         user = self.config.get("username") or ""

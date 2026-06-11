@@ -392,6 +392,7 @@ class CameraController extends Controller
                 'camera_name'    => $v->camera?->name ?? '—',
                 'violation_type' => $v->violation_type,
                 'apd_label'      => $v->apd_label,
+                'apd_labels'     => $v->apd_labels ?? ($v->apd_label ? [$v->apd_label] : []),
                 'level'          => $v->level,
                 'image_path'     => $v->image_path,
                 'person_name'    => $v->person_name,
@@ -487,12 +488,13 @@ class CameraController extends Controller
         if ($v->violation_type === 'discipline') {
             return 'Aktivitas di Luar Shift';
         }
-
-        return match ($v->apd_label) {
+        $map = [
             'no_helmet' => 'Tidak Pakai Helm',
             'no_vest'   => 'Tidak Pakai Rompi',
             'no_boots'  => 'Tidak Pakai Sepatu Safety',
-            default     => ucfirst(str_replace('_', ' ', $v->apd_label ?? 'Pelanggaran APD')),
-        };
+        ];
+        $labels = $v->apd_labels ?? ($v->apd_label ? [$v->apd_label] : []);
+        if (empty($labels)) return 'Pelanggaran APD';
+        return implode(', ', array_map(fn($l) => $map[$l] ?? ucfirst(str_replace('_', ' ', $l)), $labels));
     }
 }

@@ -155,8 +155,9 @@ function renderDetail(v) {
     document.getElementById('d-type').textContent       = v.violation_type === 'apd' ? 'APD' : 'Disiplin';
     document.getElementById('d-confidence').textContent = v.confidence ? (v.confidence * 100).toFixed(1) + '%' : '—';
 
-    document.getElementById('d-labels').innerHTML = v.apd_label
-        ? `<span class="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">${v.apd_label}</span>`
+    const apdLabels = v.apd_labels?.length ? v.apd_labels : (v.apd_label ? [v.apd_label] : []);
+    document.getElementById('d-labels').innerHTML = apdLabels.length
+        ? apdLabels.map(l => `<span class="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">${l}</span>`).join('')
         : '<span class="text-xs text-gray-400">—</span>';
 
     document.getElementById('d-status-badge').innerHTML =
@@ -267,8 +268,9 @@ async function submitAction() {
 
     try {
         await api('PUT', `/api/violations/${violationId}/validate`, body);
+        const wasValid = pendingIsValid;
         closeActionModal();
-        toast(pendingIsValid ? 'Berhasil divalidasi.' : 'Berhasil ditolak.');
+        toast(wasValid ? 'Berhasil divalidasi.' : 'Berhasil ditolak.');
         loadDetail();
     } catch(e) {
         toast(e.message ?? 'Gagal', 'error');

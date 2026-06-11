@@ -49,9 +49,9 @@ return [
     ],
 
     'detection_worker' => [
-        'url'     => env('DETECTION_WORKER_URL', 'http://detection_worker:8000'),
-        'key'     => env('SERVICE_KEY', ''),
-        'timeout' => env('DETECTION_WORKER_TIMEOUT', 5),
+        'url'         => env('DETECTION_WORKER_URL', 'http://detection_worker:8000'),
+        'key'         => env('SERVICE_KEY', ''),
+        'timeout'     => env('DETECTION_WORKER_TIMEOUT', 5),
     ],
 
 ];

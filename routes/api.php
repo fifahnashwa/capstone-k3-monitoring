@@ -80,7 +80,6 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin,manager,hr')->group(function () {
         // Config read
         Route::get('/zones',                 [ZoneController::class, 'index']);
-        Route::get('/models',                [CameraController::class, 'listModels']);
         Route::get('/cameras',               [CameraController::class, 'index']);
         Route::get('/cameras/{camera}',      [CameraController::class, 'show']);
         Route::get('/shifts',                [ShiftController::class, 'index']);
