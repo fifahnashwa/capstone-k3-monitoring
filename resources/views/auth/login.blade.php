@@ -1,164 +1,175 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="h-full">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Login — Sistem K3</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Login | SafeGuard-CV</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: { extend: {
+                colors: {
+                    "surface": "#faf8ff", "surface-bright": "#faf8ff",
+                    "surface-container-lowest": "#ffffff", "surface-container": "#ededf9",
+                    "on-surface": "#191b23", "on-surface-variant": "#434655",
+                    "outline": "#737686", "outline-variant": "#c3c6d7",
+                    "primary": "#004ac6", "on-primary": "#ffffff",
+                    "error": "#ba1a1a", "error-container": "#ffdad6",
+                },
+                borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "2xl": "0.75rem", "full": "9999px" },
+                fontFamily: { "manrope": ["Manrope","sans-serif"], "inter": ["Inter","sans-serif"] },
+                fontSize: {
+                    "headline-lg": ["28px", { lineHeight: "36px", fontWeight: "700" }],
+                    "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                    "body-md": ["14px", { lineHeight: "20px" }],
+                    "body-sm": ["12px", { lineHeight: "18px" }],
+                    "label-caps": ["11px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" }],
+                },
+            }}
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            line-height: 1; vertical-align: middle;
+        }
+        .login-mesh {
+            background-color: #faf8ff;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(0,74,198,0.06) 0px, transparent 60%),
+                radial-gradient(at 100% 100%, rgba(80,95,118,0.05) 0px, transparent 60%);
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+<body class="h-full font-inter text-on-surface login-mesh flex flex-col overflow-hidden">
 
-<div class="w-full max-w-sm">
+<!-- Background blobs -->
+<div class="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+    <div class="absolute -top-[25%] -left-[10%] w-[50%] h-[50%] bg-primary/[0.04] rounded-full blur-[120px]"></div>
+    <div class="absolute -bottom-[20%] -right-[10%] w-[45%] h-[45%] bg-secondary/[0.04] rounded-full blur-[100px]"></div>
+</div>
 
-    {{-- CARD --}}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+<main class="flex-grow flex items-center justify-center px-6">
+    <div class="w-full max-w-[440px]">
 
-        {{-- LOGO / HEADER --}}
-        <div class="mb-7 text-center">
-            <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl mb-4">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                </svg>
-            </div>
-            <h1 class="text-lg font-semibold text-gray-900">Sistem Monitoring K3</h1>
-            <p class="text-sm text-gray-400 mt-1">Masuk untuk melanjutkan</p>
+        <!-- Logo -->
+        <div class="flex flex-col items-center mb-8">
+            <h1 class="font-manrope font-bold text-headline-lg text-primary tracking-tight">SafeGuard-CV</h1>
+            <p class="text-body-md text-on-surface-variant mt-1">Computer Vision Safety Monitoring System</p>
         </div>
-        
-        <div id="error-box" class="hidden mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600"></div>
 
-        {{-- FORM --}}
-        <div class="space-y-4">
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1.5" for="email">Email</label>
-                <input
-                    type="email"
-                    id="email"
-                    placeholder="email@perusahaan.com"
-                    class="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    autofocus
-                />
-            </div>
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1.5" for="password">Password</label>
-                <div class="relative">
-                    <input
-                        type="password"
-                        id="password"
-                        placeholder="••••••••"
-                        class="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
-                    />
-                    <button type="button" onclick="togglePassword()"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        aria-label="Tampilkan/sembunyikan password">
+        <!-- Card -->
+        <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant shadow-sm relative overflow-hidden">
+            <!-- Top accent -->
+            <div class="absolute top-0 left-0 w-full h-[3px] bg-primary"></div>
 
-                        {{-- Ikon mata terbuka: ditampilkan saat password tersembunyi --}}
-                        <svg id="eye-open" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                        </svg>
+            <div class="p-8">
+                <div class="mb-6">
+                    <h2 class="font-manrope font-semibold text-headline-md text-on-surface">Sign In</h2>
+                    <p class="text-body-sm text-on-surface-variant mt-0.5">Akses dashboard pemantauan keselamatan produksi.</p>
+                </div>
 
-                        {{-- Ikon mata tertutup: ditampilkan saat password terlihat --}}
-                        <svg id="eye-closed" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
-                        </svg>
+                <!-- Error box -->
+                <div id="error-box" class="hidden mb-5 flex items-start gap-2.5 px-4 py-3 bg-error-container border border-error/20 rounded-xl text-body-sm text-on-error-container">
+                    <span class="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5" style="font-variation-settings:'FILL' 1">error</span>
+                    <span id="error-msg"></span>
+                </div>
+
+                <div class="space-y-5">
+                    <!-- Email -->
+                    <div class="space-y-1.5">
+                        <label for="email" class="text-label-caps text-on-surface-variant uppercase tracking-widest">Email</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">alternate_email</span>
+                            <input type="email" id="email" placeholder="nama@perusahaan.com"
+                                class="w-full pl-10 pr-3 py-3 bg-surface border border-outline-variant rounded-xl text-body-md text-on-surface placeholder:text-outline/60
+                                       focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                        </div>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between items-center">
+                            <label for="password" class="text-label-caps text-on-surface-variant uppercase tracking-widest">Password</label>
+                        </div>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">lock</span>
+                            <input type="password" id="password" placeholder="••••••••"
+                                class="w-full pl-10 pr-10 py-3 bg-surface border border-outline-variant rounded-xl text-body-md text-on-surface placeholder:text-outline/60
+                                       focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                            <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors">
+                                <span class="material-symbols-outlined text-[18px]" id="eye-icon">visibility</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Submit -->
+                    <button onclick="doLogin()" id="btn-login"
+                        class="w-full flex justify-center items-center gap-2 py-3 px-4 bg-primary text-on-primary font-semibold text-body-md rounded-xl
+                               hover:bg-primary/90 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                        <span>Masuk</span>
+                        <span class="material-symbols-outlined text-[18px]">login</span>
                     </button>
                 </div>
             </div>
-
-            <button
-                onclick="doLogin()"
-                id="btn-login"
-                class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors">
-                Masuk
-            </button>
         </div>
     </div>
+</main>
 
-    <p class="text-center text-xs text-gray-400 mt-5">
-        {{ config('app.name') }} &copy; {{ date('Y') }}
-    </p>
-</div>
+<footer class="flex-shrink-0 py-4 px-6 border-t border-outline-variant/20 bg-surface-container-lowest/60 backdrop-blur-sm flex flex-col sm:flex-row justify-between items-center gap-3">
+    <p class="text-label-caps text-outline uppercase tracking-widest">Sistem K3 Monitoring Kelompok 2 © {{ date('Y') }}</p>
+</footer>
 
 <script>
 function togglePassword() {
-    const input = document.getElementById('password');
-    const isHidden = input.type === 'password';
-
-    input.type = isHidden ? 'text' : 'password';
-
-    //Toggle ikon sesuai state
-    document.getElementById('eye-open').classList.toggle('hidden', isHidden);
-    document.getElementById('eye-closed').classList.toggle('hidden', !isHidden);
+    const inp = document.getElementById('password');
+    const icon = document.getElementById('eye-icon');
+    if (inp.type === 'password') { inp.type = 'text'; icon.textContent = 'visibility_off'; }
+    else { inp.type = 'password'; icon.textContent = 'visibility'; }
 }
 
 function showError(msg) {
     const box = document.getElementById('error-box');
-    box.textContent = msg;
+    document.getElementById('error-msg').textContent = msg;
     box.classList.remove('hidden');
 }
+function hideError() { document.getElementById('error-box').classList.add('hidden'); }
 
-function hideError() {
-    document.getElementById('error-box').classList.add('hidden');
-}
-
-function setLoading(loading) {
+function setLoading(on) {
     const btn = document.getElementById('btn-login');
-    btn.disabled = loading;
-    btn.textContent = loading ? 'Memproses...' : 'Masuk';
-    btn.classList.toggle('opacity-60', loading);
-    btn.classList.toggle('cursor-not-allowed', loading);
+    btn.disabled = on;
+    btn.innerHTML = on
+        ? '<svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg><span>Memproses...</span>'
+        : '<span>Masuk</span><span class="material-symbols-outlined text-[18px]">login</span>';
 }
 
 async function doLogin() {
     hideError();
-
-    const emailInput    = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const email         = emailInput.value.trim();
-    const password      = passwordInput.value;
-
-    if (!email || !password) {
-        showError('Email dan password wajib diisi.');
-        return;
-    }
-
-    // Validasi format email di client sebelum hit server
-    if (!emailInput.checkValidity()) {
-        showError('Format email tidak valid.');
-        return;
-    }
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    if (!email || !password) { showError('Email dan password wajib diisi.'); return; }
+    if (!document.getElementById('email').checkValidity()) { showError('Format email tidak valid.'); return; }
 
     setLoading(true);
-
     try {
         const res = await fetch('/login', {
             method: 'POST',
             headers: {
-                'Content-Type':  'application/json',
-                'Accept':        'application/json',
-                'X-XSRF-TOKEN':  getCookie('XSRF-TOKEN'),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
             },
             credentials: 'same-origin',
             body: JSON.stringify({ email, password }),
         });
-
         const data = await res.json();
-
-        if (!res.ok) {
-            showError(data.message ?? 'Email atau password salah.');
-            return;
-        }
-
-        // Login berhasil → redirect ke dashboard
+        if (!res.ok) { showError(data.message ?? 'Email atau password salah.'); return; }
         window.location.href = '/dashboard';
-
     } catch (err) {
-        showError('Terjadi kesalahan jaringan. Coba lagi.');
+        showError('Terjadi kesalahan jaringan. Silakan coba lagi.');
     } finally {
         setLoading(false);
     }
@@ -169,13 +180,9 @@ function getCookie(name) {
     return m ? decodeURIComponent(m[2]) : '';
 }
 
-document.getElementById('email').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
-});
-document.getElementById('password').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
+['email','password'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 });
 </script>
-
 </body>
 </html>

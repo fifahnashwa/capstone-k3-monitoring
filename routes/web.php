@@ -5,31 +5,41 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\ActivityLog;
 use App\Http\Controllers\ReportController;
 
-// ─── Protected pages (session auth) ──────────────────────────────────────────
+// ─── Semua role (cukup login) ─────────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard',    fn() => view('dashboard.index'))->name('dashboard');
-    Route::get('/violations',   fn() => view('violations.index'))->name('violations.index');
+    Route::get('/dashboard', fn() => view('dashboard.index'))->name('dashboard');
+});
+
+// ─── Admin & Manager ──────────────────────────────────────────────────────────
+Route::middleware(['auth', 'role:admin,manager'])->group(function () {
+    Route::get('/violations',             fn() => view('violations.index'))->name('violations.index');
     Route::get('/violations/{violation}', fn() => view('violations.show'))->name('violations.show');
-    Route::get('/reports',      fn() => view('reports.index'))->name('reports.index');
-    Route::get('/users',        fn() => view('users.index'))->name('users.index');
-    Route::get('/zones',        fn() => view('zones.index'))->name('zones.index');
-    Route::get('/shifts',       fn() => view('shifts.index'))->name('shifts.index');
-    Route::get('/activity-logs', fn() => view('activity-logs.index'))->name('activity-logs.index');
+});
 
-    // Kamera — PENTING: /cameras/monitoring harus SEBELUM /cameras/{id}
-    Route::get('/cameras', fn() => view('cameras.index'))->name('cameras.index');
+// ─── HR saja ─────────────────────────────────────────────────────────────────
+Route::middleware(['auth', 'role:hr'])->group(function () {
+    Route::get('/reports', fn() => view('reports.index'))->name('reports.index');
+});
+
+// ─── HR & Admin — Export PDF ──────────────────────────────────────────────────
+Route::middleware(['auth', 'role:hr,admin'])->group(function () {
+    Route::get('/reports/pdf', [ReportController::class, 'exportPdf'])->name('reports.pdf');
+});
+
+// ─── Admin saja ──────────────────────────────────────────────────────────────
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    // Kamera — monitoring HARUS sebelum {id}
+    Route::get('/cameras',            fn() => view('cameras.index'))->name('cameras.index');
     Route::get('/cameras/monitoring', fn() => view('cameras.monitoring'))->name('cameras.monitoring');
-    Route::get('/cameras/{id}', function (int $id) {
-        return view('cameras.show', ['cameraId' => $id]);
-    })->name('cameras.show')->where('id', '[0-9]+');
+    Route::get('/cameras/{id}',       fn(int $id) => view('cameras.show', ['cameraId' => $id]))
+        ->name('cameras.show')->where('id', '[0-9]+');
 
-    Route::get('/reports/pdf', [ReportController::class, 'exportPdf'])
-        ->name('reports.pdf')
-        ->middleware('role:hr,admin');
-
-    Route::get('/workers/faces', fn() => view('workers.faces'))
-        ->name('workers.faces')
-        ->middleware('role:admin');
+    Route::get('/operasional',   fn() => view('operasional.index'))->name('operasional.index');
+    Route::get('/users',         fn() => view('users.index'))->name('users.index');
+    Route::get('/zones',         fn() => view('zones.index'))->name('zones.index');
+    Route::get('/shifts',        fn() => view('shifts.index'))->name('shifts.index');
+    Route::get('/activity-logs', fn() => view('activity-logs.index'))->name('activity-logs.index');
+    Route::get('/workers/faces', fn() => view('workers.faces'))->name('workers.faces');
 });
 
 // ─── Auth routes ──────────────────────────────────────────────────────────────
